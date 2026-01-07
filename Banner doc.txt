@@ -1,0 +1,268 @@
+راه اندازی تپسل پلاس در اندروید
+تنظیمات Gradle
+پشتیبانی از اندروید ۱۳
+مقداردهی اولیه
+تنظیمات proguard
+تنظیمات مربوط به GDPR
+Family Policy
+دسترسی‌ها
+تنظیمات Network Security Configuration
+در صورت وجود مشکل یا ابهام به لیست خطاهای فنی رایج مراجعه کنید یا صفحه‌ی Github Issues را بررسی نمایید.
+
+ابتدا کتابخانه‌ی TapsellPlus را مطابق روش زیر به پروژه‌ی خود اضافه کنید. سپس هر شبکه‌ی تبلیغاتی که مایل هستید و تپسل پلاس پشتیبانی می‌کند را مطابق توضیحات بخش شبکه‌های تبلیغاتی به پروژه‌ی خود اضافه نمایید. در انتها با اطلاعات موجود در بخش تست، مطمئن شوید که شبکه‌ی مورد نظر به درستی کار می‌کند.
+
+تنظیمات Gradle
+ریپازیتوری تپسل را به فایل build.gradle اصلی پروژه اضافه کنید.
+
+allprojects {  
+    repositories {
+        ....
+        mavenCentral()
+
+        // for v1.2.3-rc4 and before
+        //maven {  
+        //    url 'https://dl.bintray.com/tapsellorg/maven'  
+        //}
+        ....
+    }  
+}
+خط زیر را به فایل build.gradle ماژول برنامه در قسمت dependencies اضافه کنید.
+
+dependencies {
+    // ...
+    
+    implementation("ir.tapsell.plus:tapsell-plus-sdk-android:2.3.2")
+}
+همچنین اگر در قسمت android این قسمت وجود ندارد اضافه‌اش کنید.
+
+compileOptions {
+  sourceCompatibility JavaVersion.VERSION_1_8
+  targetCompatibility JavaVersion.VERSION_1_8
+}
+با کمک پراکسی gradle را sync کنید تا تپسل به پروژه اضافه شود.
+
+پشتیبانی از اندروید ۱۳
+اپلیکیشن‌هایی که نسخه targetSDK پروژه خود را به ۳۳ (اندروید ۱۳) ارتقا می‌دهند، باید مجوز سرویس‌های گوگل پلی را در فایل مانیفست خود اضافه کنند، همانند زیر:
+
+<uses-permission android:name="com.google.android.gms.permission.AD_ID"/>
+برای خواندن بیشتر در مورد تغییرات شناسه تبلیغات گوگل اینجا کلیک کنید.
+
+مقداردهی اولیه
+در اکتیویتی اولیه برنامه باید تپسل پلاس را راه‌اندازی کنید.
+
+import ir.tapsell.plus.TapsellPlus;
+
+public class MainActivity extends AppCompatActivity {
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_main);
+        ...
+        TapsellPlus.initialize(this, BuildConfig.TAPSELL_KEY,
+				new TapsellPlusInitListener() {
+            @Override
+            public void onInitializeSuccess(AdNetworks adNetworks) {
+                Log.d("onInitializeSuccess", adNetworks.name());
+            }
+
+            @Override
+            public void onInitializeFailed(AdNetworks adNetworks,
+						AdNetworkError adNetworkError) {
+                Log.e("onInitializeFailed", "ad network: " + adNetworks.name() + ", error: " +	adNetworkError.getErrorMessage());
+            }
+        });
+        ...
+    }
+}
+TAPSELL_KEY کلید تپسل هست و برای هر اپلیکیشن که میسازید در پنل تپسل ساخته میشود، میتوانید از پنل کپی کنید.
+
+برای مشاهده‌ی جزئی‌تر لاگ‌ها در لایبرری از کد
+
+TapsellPlus.setDebugMode(Log.DEBUG)
+استفاده کنید. هنگام درخواست یا نمایش هرگونه خطایی با جزئیات دقیق‌تر نمایش داده می‌شود.
+
+تنظیمات proguard
+تنظیمات مربوط به proguard در این فایل قرار دارد.
+
+تنظیمات مربوط به GDPR
+از آن‌جا که کتابخانه‌ی تپسل پلاس قوانین GDPR را در خصوص نمایش تبلیغات شخصی‌سازی شده رعایت می‌کند، به طور پیش فرض اگر کاربر با IP یکی از کشورهای مشمول این قانون از اپلیکیشن شما استفاده کند، دیالوگی در این خصوص به کاربر نمایش می‌دهد. اگر تمایل دارید تا به جای تصمیم کاربر، خودتان دسترسی لازم را تعیین کنید می‌توانید از تکه کد زیر استفاده نمایید. توجه داشته باشید که این تکه کد می‌بایستی پس از Initialize شدن تپسل پلاس و پیش از درخواست تبلیغ صدا زده شود تا نتیجه‌ی آن در درخواست شما اعمال شده باشد. مقدار true‌ به این معنی است که شما حق استفاده از اطلاعات جهت نمایش تبلیغ شخصی‌سازی شده را به شبکه‌های تبلیغاتی داده‌اید.
+
+TapsellPlus.setGDPRConsent(activity, true);
+در صورت نیاز به نمایش مجدد دیالوگ GDPR برای کاربر می‌توانید از کد زیر استفاده نمایید:
+
+TapsellPlus.showGDPRDialog(/* activity */ this)
+Family Policy
+اگر هر یک از مخاطبان هدف برنامه شما کودکان هستند (بخصوص اگر شما در حال توسعه یک بازی هستید)، محتوای برنامه شما باید مناسب برای این دسته از کاربران باشد. همچنین، امکان جمع‌آوری برخی از اطلاعات شخصی مانند شناسه تبلیغاتی گوگل (Google Advertising ID) مجاز نیست. با این حال، کتابخانه‌های تبلیغاتی شخص ثالت نیاز به این شناسه تبلیغاتی دارند تا تبلیغات شخصی‌سازی را برای کاربران ارائه و ارسال کنند. پس، در کتاباخانه تبلیغاتی تپسل، تمامی کاربران به عنوان افرادی با سن 13 سال یا بالاتر در نظر گرفته می‌شوند. بنابراین، به عنوان یک توسعه‌دهنده برنامه اگر قصد انتشار برنامه خود در GooglePlay را دارید، باید در پنل آن تایید کنید که برنامه شما برای مخاطبان با سن 13 سال یا بالاتر هدف قرار دارد. در غیر این صورت، برنامه شما بر اساس این سیاست GooglePlay حذف خواهد شد.
+
+دسترسی‌ها
+کتابخانه‌ی تپسل‌پلاس به جز اینترنت و WAKE_LOCK دسترسی دیگری از کاربر نمی‌گیرد. امّا به منظور بهبود عملکرد کتابخانه برای نمایش تبلیغات متناسب با هر کاربر می‌توانید دسترسی زیر را به اپلیکیشن خود اضافه نمایید. همچنین می‌بایستی دسترسی در زمان اجرا برای این مورد را نیز از کاربر بگیرید.
+
+<uses-permission android:name="android.permission.READ_PHONE_STATE" />
+این دسترسی صرفا برای دریافت Network Type کاربر بوده و استفاده‌ی دیگری از آن نمی‌شود. در صورتی که با اضافه کردن این دسترسی قصد انتشار اپلیکیشن خود در پلی استور را دارید می‌بایستی Privacy Policy خود را تغییر دهید. (می‌توانید از این لینک کمک بگیرید).
+
+در صورتی که از نسخه‌های قبل از ۱.۲.۶ استفاده می‌کنید و قصد گرفتن این دسترسی را ندارید می‌توانید با افزودن تکه کد زیر به فایل AndroidManifest.xml آن را حذف نمایید (در نسخه‌های ۱.۲.۶ به بعد این دسترسی به طور پیش‌فرض وجود ندارد و نیازی به حذف کردن آن نیست).
+
+<uses-permission android:name="android.permission.READ_PHONE_STATE"
+	tools:node="remove" />
+تنظیمات Network Security Configuration
+در صورتی که اپلیکیشن شما درخواست‌های http ارسال می‌کند، در مسیر res/xml پروژه‌ی خود یک فایل به نامnetwork_security_config.xml بسازید.
+
+اگر تمام ارتباطات اپلیکیشن شما از طریق پروتوکل http برقرار می‌شود، خطوط زیر را به فایل network_security_config.xml اضافه کنید:
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <base-config cleartextTrafficPermitted="true"/>
+  </base-config>
+</network-security-config>
+اگر اپلیکیشن شما به تعداد محدودی از domainها بسته‌های http ارسال می‌کند، خطوط زیر را به فایل network_security_config.xml اضافه کنید:
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+  <domain-config cleartextTrafficPermitted="true"/>
+    <domain includeSubdomains="true"><!—your subdomain--></domain>
+  </domain-config>
+</network-security-config>
+در آخر به تگ application در فایل AndroidManifest.xml اپلیکیشن خود، attribute android:networkSecurityConfig را مطابق خطوط زیر اضافه کنید:
+
+<?xml version="1.0" encoding="utf-8"?>
+<manifest>
+    <application 
+        android:networkSecurityConfig="@xml/network_security_config">
+    </application>
+</manifest>
+و در صورت وجود attribute زیر در تگ application در AndroidManifest.xml آن را حذف کنید:
+
+<application
+         android:usesCleartextTraffic="true">
+
+
+
+
+پیاده سازی تبلیغات بنر استاندارد
+ساخت تبلیغگاه
+درخواست تبلیغ
+نمایش تبلیغ
+حذف تبلیغ
+سایز بنرها
+ساخت تبلیغگاه
+ابتدا از پنل تپسل یک تبلیغگاه (zone) بنر استاندارد بسازید و zoneId را زمان درخواست تبلیغ استفاده کنید.
+
+درخواست تبلیغ
+مطابق کد زیر می‌توانید با استفاد از متد TapsellPlus.requestStandardBannerAd درخواست تبلیغ بدهید.
+
+TapsellPlus.requestStandardBannerAd(
+                CONTEXT, ZONE_ID_STANDARD_BANNER,
+                TapsellPlusBannerType.BANNER_320x50,
+                new AdRequestCallback() {
+                    @Override
+                    public void response(TapsellPlusAdModel tapsellPlusAdModel) {
+                        super.response(tapsellPlusAdModel);
+                        
+                        //Ad is ready to show
+                        //Put the ad's responseId to your responseId variable
+                        standardBannerResponseId = tapsellPlusAdModel.getResponseId();
+                    }
+
+                    @Override
+                    public void error(@NonNull String message) {
+                    }
+                });
+اگر تمایل دارید در کالبک error مجددا درخواست تبلیغ کنید، حتما این کار را به کمک متغیری به عنوان شمارنده انجام دهید. زیرا به کمک آن متغیر می‌توانید محدودیت تعداد دفعات را برای درخواست لحاظ کنید. به عنوان مثال وقتی این جایگاه تبلیغاتی را از پنل غیرفعال نمودید، اگر بدون محدود کردن دفعات، هر بار در کالبک error مجددا درخواست تبلیغ دهید، برنامه‌تان در یک حلقه‌ی بی‌نهایت می‌افتد و عملکرد آن مختل می‌شود.
+
+نمایش تبلیغ
+در صفحه‌ای که می‌خواهید تبلیغ نمایش داده شود یک ViewGroup اضافه کنید.
+
+<RelativeLayout
+    android:id="@+id/standardBanner"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
+    android:layout_gravity="center"
+    android:gravity="center" />
+بعد از اجرای متد response تبلیغ آماده نمایش است و می‌توانید مطابق روش زیر نمایش دهید.
+
+TapsellPlus.showStandardBannerAd(CONTEXT, standardBannerResponseId,
+                findViewById(R.id.standardBanner),
+                new AdShowListener() {
+                    @Override
+                    public void onOpened(TapsellPlusAdModel tapsellPlusAdModel) {
+                        super.onOpened(tapsellPlusAdModel);
+                    }
+
+                    @Override
+                    public void onError(TapsellPlusErrorModel tapsellPlusErrorModel) {
+                        super.onError(tapsellPlusErrorModel);
+                    }
+                });
+حذف تبلیغ
+در پایان چرخه‌ی حیات اکتیویتی یا هر زمان که قصد داشتید تبلیغ بسته شود، می‌بایستی متد زیر را صدا بزنید:
+
+private void destroyAd() {
+    TapsellPlus.destroyStandardBanner(this, standardBannerResponseId, findViewById(R.id.standardBanner));
+}
+
+// For example in Activity's onDestory method
+@Override
+protected void onDestroy() {
+    destroyAd();
+    super.onDestroy();
+}
+سایز بنرها
+تمامی سایزهای قابل پشتیبانی در تپسل پلاس در کلاس TapsellPlusBannerType قرار دارند.
+
+نوع بنر	اندازه	شبکه‌های پشتیبانی شده
+BANNER_320x50	320x50	تپسل، AdMob، AppLovin، UnityAds
+BANNER_320x100	320x100	تپسل، AdMob
+BANNER_250x250	250x250	تپسل
+BANNER_300x250	300x250	تپسل، AdMob، AppLoving
+BANNER_468x60	468x60	AdMob، UnityAds
+BANNER_728x90	728x90	AdMob، AppLovin، UnityAds
+
+
+
+تست شبکه‌های تبلیغاتی
+شناسه تپسل
+تبلیغ‌گاه‌ها
+برای اطمینان از صحت عملکرد adNetwrokهایی که اضافه کردید از zoneId مربوط به هرکدام استفاده کنید. هر zoneId مربوط به یک adNetwork و یک نوع تبلیغ هست و تبلیغ حالت تست نمایش داده میشود.
+
+توجه داشته باشید در حالت تست باید از appId تست استفاده کنید.
+
+هنگام تست باید از ip خارج ایران (فیلتر شکن) استفاده کنید.
+
+تست را در حالت build release هم انجام دهید.
+
+برای تست از این appId استفاده کنید.
+
+شناسه تپسل
+TapsellPlus.initialize(
+    CONTEXT,
+    "alsoatsrtrotpqacegkehkaiieckldhrgsbspqtgqnbrrfccrtbdomgjtahflchkqtqosa");
+استفاده از AdMob SDK
+
+برای استفاده ادموب بایستی تگ مورد نیاز آنرا در مانیفست قرار دهید. برای اطلاعات بیشتر از نحوه‌ی اجرای این کار به مستندات شبکه‌های تبلیغاتی مراجعه کنید
+
+برای تست ادموب نیازی به App ID اصلی ندارید و می‌توانید از test app id استفاده کنید:
+
+ca-app-pub-3940256099942544~3347511713
+تبلیغ‌گاه‌ها
+برای هر ادنتورک و هر تبلیغ از zoneId های زیر برای درخواست و نمایش تبلیغ استفاده کنید. در حال حاضر فقط adType/adNetworkهای زیر قابل استفاده هستند.
+
+Ad Network	Ad Type	ZoneId
+Tapsell	Rewarded Video	5cfaa802e8d17f0001ffb28e
+Tapsell	Interstitial	5cfaa942e8d17f0001ffb292
+Tapsell	Native	5cfaa9deaede570001d5553a
+Tapsell	Native Video	60edcf8ad3459c17f019d36b
+Tapsell	Standard	5cfaaa30e8d17f0001ffb294
+Tapsell	Vast (PreRoll)	60e441ff537bfb4073746249
+Admob	Rewarded Video	5cfaa8aee8d17f0001ffb28f
+Admob	Interstitial	5cfaa9b0e8d17f0001ffb293
+Admob	Standard	5cfaaa4ae8d17f0001ffb295
+Admob	Native	5d123c9968287d00019e1a94
+Unity Ads	Rewarded Video	5cfaa8eae8d17f0001ffb291
+Unity Ads	Interstitial	608d1c1c2d8e7e0001348111
+Unity Ads	Standard	608d20a7fb661b000190bfe4
+Chartboost	Rewarded Video	5cfaa8cee8d17f0001ffb290
+Chartboost	Interstitial	60c5b303d756bf0001891f1c
+AppLovin	Rewarded Video	5d3eb48c3aef7a0001406f84
+AppLovin	Interstitial	5d3eb4fa3aef7a0001406f85
+AppLovin	Standard	5d3eb5337a9b060001892441
+Mintegral	Rewarded Video	612232e33cf0307ab73e9a3f
+Mintegral	Interstitial	612b6f24e2645f79d3f3549e
+Mintegral	Standard	615800246cd7ee3cd28f15d6

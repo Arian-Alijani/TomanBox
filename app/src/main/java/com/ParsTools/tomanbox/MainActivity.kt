@@ -82,6 +82,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        Log.d(TapsellLogTag, "MainActivity onCreate: init TapsellPlus")
         TapsellPlus.initialize(
             this,
             BuildConfig.TAPSELL_KEY,
@@ -198,8 +199,16 @@ private fun StandardBannerAd(
 
     LaunchedEffect(isReady) {
         if (!isReady || activity == null) {
+            Log.w(
+                TapsellLogTag,
+                "Standard banner not requested. isReady=$isReady activity=${activity != null}"
+            )
             return@LaunchedEffect
         }
+        Log.d(
+            TapsellLogTag,
+            "Requesting standard banner. zoneId=$TapsellTestStandardZoneId size=BANNER_320x50"
+        )
         TapsellPlus.requestStandardBannerAd(
             activity,
             TapsellTestStandardZoneId,
@@ -207,6 +216,10 @@ private fun StandardBannerAd(
             object : AdRequestCallback() {
                 override fun response(tapsellPlusAdModel: TapsellPlusAdModel) {
                     super.response(tapsellPlusAdModel)
+                    Log.d(
+                        TapsellLogTag,
+                        "Standard banner response received. responseId=${tapsellPlusAdModel.responseId}"
+                    )
                     responseId = tapsellPlusAdModel.responseId
                 }
 
@@ -244,6 +257,10 @@ private fun StandardBannerAd(
         val currentResponseId = responseId
         val container = bannerContainer
         if (currentResponseId != null && container != null && activity != null) {
+            Log.d(
+                TapsellLogTag,
+                "Showing standard banner. responseId=$currentResponseId hasContainer=${container != null}"
+            )
             TapsellPlus.showStandardBannerAd(
                 activity,
                 currentResponseId,
@@ -251,6 +268,10 @@ private fun StandardBannerAd(
                 object : AdShowListener() {
                     override fun onOpened(tapsellPlusAdModel: TapsellPlusAdModel) {
                         super.onOpened(tapsellPlusAdModel)
+                        Log.d(
+                            TapsellLogTag,
+                            "Standard banner opened. responseId=${tapsellPlusAdModel.responseId}"
+                        )
                     }
 
                     override fun onError(tapsellPlusErrorModel: TapsellPlusErrorModel) {
@@ -262,6 +283,11 @@ private fun StandardBannerAd(
                     }
                 }
             )
+        } else {
+            Log.w(
+                TapsellLogTag,
+                "Show banner skipped. responseId=$currentResponseId container=${container != null} activity=${activity != null}"
+            )
         }
     }
 
@@ -270,7 +296,16 @@ private fun StandardBannerAd(
             val currentResponseId = responseId
             val container = bannerContainer
             if (currentResponseId != null && container != null && activity != null) {
+                Log.d(
+                    TapsellLogTag,
+                    "Destroying standard banner. responseId=$currentResponseId"
+                )
                 TapsellPlus.destroyStandardBanner(activity, currentResponseId, container)
+            } else {
+                Log.w(
+                    TapsellLogTag,
+                    "Destroy banner skipped. responseId=$currentResponseId container=${container != null} activity=${activity != null}"
+                )
             }
         }
     }
