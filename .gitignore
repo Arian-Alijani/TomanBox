@@ -24,3 +24,4 @@ local.properties
 # Gradle
 .gradle/
 build/
+Banner doc.txt
