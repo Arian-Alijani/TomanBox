@@ -40,7 +40,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -51,10 +50,8 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDirection
@@ -85,21 +82,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        TapsellPlus.setDebugMode(Log.DEBUG)
         TapsellPlus.initialize(
             this,
-            TAPSELL_TEST_APP_ID,
+            BuildConfig.TAPSELL_KEY,
             object : TapsellPlusInitListener {
                 override fun onInitializeSuccess(adNetworks: AdNetworks) {
                     tapsellReady.value = true
-                    Log.d("TapsellPlus", "Initialized: ${adNetworks.name}")
+                    Log.d(TapsellLogTag, "onInitializeSuccess: ${adNetworks.name}")
                 }
 
-                override fun onInitializeFailed(adNetworks: AdNetworks, adNetworkError: AdNetworkError) {
-                    tapsellReady.value = false
+                override fun onInitializeFailed(
+                    adNetworks: AdNetworks,
+                    adNetworkError: AdNetworkError
+                ) {
                     Log.e(
-                        "TapsellPlus",
-                        "Init failed: ${adNetworks.name} - $adNetworkError"
+                        TapsellLogTag,
+                        "onInitializeFailed: ${adNetworks.name}, error: ${adNetworkError.errorMessage}"
                     )
                 }
             }
@@ -112,8 +110,8 @@ class MainActivity : ComponentActivity() {
                         containerColor = MaterialTheme.colorScheme.background
                     ) { innerPadding ->
                         TomanBoxScreen(
-                            modifier = Modifier.padding(innerPadding),
-                            tapsellReady = tapsellReady
+                            tapsellReady = tapsellReady.value,
+                            modifier = Modifier.padding(innerPadding)
                         )
                     }
                 }
@@ -124,8 +122,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 private fun TomanBoxScreen(
-    modifier: Modifier = Modifier,
-    tapsellReady: MutableState<Boolean>
+    tapsellReady: Boolean,
+    modifier: Modifier = Modifier
 ) {
     var mode by rememberSaveable { mutableStateOf(ConvertMode.TomanToRial) }
     var input by rememberSaveable { mutableStateOf("0") }
@@ -154,12 +152,7 @@ private fun TomanBoxScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp)
         ) {
-            StandardBannerAd(
-                tapsellReady = tapsellReady.value,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(StandardBannerHeight)
-            )
+            StandardBannerAd(isReady = tapsellReady)
             TitleSection()
             ModeSwitch(
                 mode = mode,
@@ -184,99 +177,6 @@ private fun TomanBoxScreen(
 }
 
 @Composable
-private fun StandardBannerAd(
-    tapsellReady: Boolean,
-    modifier: Modifier = Modifier
-) {
-    val activity = LocalContext.current as? Activity
-    var responseId by remember { mutableStateOf<String?>(null) }
-    var isRequesting by remember { mutableStateOf(false) }
-    var isShown by remember { mutableStateOf(false) }
-    var adContainer by remember { mutableStateOf<FrameLayout?>(null) }
-
-    AndroidView(
-        factory = { viewContext ->
-            FrameLayout(viewContext).apply {
-                layoutParams = FrameLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    Gravity.CENTER
-                )
-                adContainer = this
-            }
-        },
-        modifier = modifier,
-        update = { view ->
-            adContainer = view
-        }
-    )
-
-    LaunchedEffect(adContainer, activity, tapsellReady) {
-        val container = adContainer ?: return@LaunchedEffect
-        val safeActivity = activity ?: return@LaunchedEffect
-        if (!tapsellReady) return@LaunchedEffect
-        if (responseId == null && !isRequesting) {
-            isRequesting = true
-            TapsellPlus.requestStandardBannerAd(
-                safeActivity,
-                TAPSELL_TEST_STANDARD_ZONE_ID,
-                TapsellPlusBannerType.BANNER_320x50,
-                object : AdRequestCallback() {
-                    override fun response(tapsellPlusAdModel: TapsellPlusAdModel) {
-                        responseId = tapsellPlusAdModel.responseId
-                        isRequesting = false
-                        Log.d("TapsellPlus", "Standard banner responseId=$responseId")
-                    }
-
-                    override fun error(message: String) {
-                        isRequesting = false
-                        Log.e("TapsellPlus", "Standard banner request error: $message")
-                    }
-                }
-            )
-        }
-    }
-
-    LaunchedEffect(responseId, adContainer, activity, tapsellReady) {
-        val container = adContainer ?: return@LaunchedEffect
-        val safeActivity = activity ?: return@LaunchedEffect
-        val adId = responseId ?: return@LaunchedEffect
-        if (!tapsellReady) return@LaunchedEffect
-        if (!isShown) {
-            TapsellPlus.showStandardBannerAd(
-                safeActivity,
-                adId,
-                container,
-                object : AdShowListener() {
-                    override fun onOpened(tapsellPlusAdModel: TapsellPlusAdModel) {
-                        super.onOpened(tapsellPlusAdModel)
-                        Log.d("TapsellPlus", "Standard banner opened")
-                    }
-
-                    override fun onError(tapsellPlusErrorModel: TapsellPlusErrorModel) {
-                        super.onError(tapsellPlusErrorModel)
-                        isShown = false
-                        Log.e("TapsellPlus", "Standard banner show error: $tapsellPlusErrorModel")
-                    }
-                }
-            )
-            isShown = true
-        }
-    }
-
-    DisposableEffect(adContainer, responseId, activity) {
-        onDispose {
-            val container = adContainer
-            val adId = responseId
-            val safeActivity = activity
-            if (container != null && adId != null && safeActivity != null) {
-                TapsellPlus.destroyStandardBanner(safeActivity, adId, container)
-            }
-        }
-    }
-}
-
-@Composable
 private fun TitleSection() {
     Text(
         text = "مبدل ارز",
@@ -284,6 +184,96 @@ private fun TitleSection() {
         color = MaterialTheme.colorScheme.onBackground,
         textAlign = TextAlign.Center
     )
+}
+
+@Composable
+private fun StandardBannerAd(
+    isReady: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val context = LocalContext.current
+    val activity = context as? Activity
+    var responseId by remember { mutableStateOf<String?>(null) }
+    var bannerContainer by remember { mutableStateOf<FrameLayout?>(null) }
+
+    LaunchedEffect(isReady) {
+        if (!isReady || activity == null) {
+            return@LaunchedEffect
+        }
+        TapsellPlus.requestStandardBannerAd(
+            activity,
+            TapsellTestStandardZoneId,
+            TapsellPlusBannerType.BANNER_320x50,
+            object : AdRequestCallback() {
+                override fun response(tapsellPlusAdModel: TapsellPlusAdModel) {
+                    super.response(tapsellPlusAdModel)
+                    responseId = tapsellPlusAdModel.responseId
+                }
+
+                override fun error(message: String) {
+                    Log.e(TapsellLogTag, "Standard banner request error: $message")
+                }
+            }
+        )
+    }
+
+    Box(
+        modifier = modifier.fillMaxWidth(),
+        contentAlignment = Alignment.Center
+    ) {
+        AndroidView(
+            factory = { ctx ->
+                FrameLayout(ctx).also { frame ->
+                    frame.layoutParams = FrameLayout.LayoutParams(
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT,
+                        Gravity.CENTER
+                    )
+                    bannerContainer = frame
+                }
+            },
+            update = { frame ->
+                if (bannerContainer !== frame) {
+                    bannerContainer = frame
+                }
+            }
+        )
+    }
+
+    LaunchedEffect(responseId, bannerContainer) {
+        val currentResponseId = responseId
+        val container = bannerContainer
+        if (currentResponseId != null && container != null && activity != null) {
+            TapsellPlus.showStandardBannerAd(
+                activity,
+                currentResponseId,
+                container,
+                object : AdShowListener() {
+                    override fun onOpened(tapsellPlusAdModel: TapsellPlusAdModel) {
+                        super.onOpened(tapsellPlusAdModel)
+                    }
+
+                    override fun onError(tapsellPlusErrorModel: TapsellPlusErrorModel) {
+                        super.onError(tapsellPlusErrorModel)
+                        Log.e(
+                            TapsellLogTag,
+                            "Standard banner show error: $tapsellPlusErrorModel"
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    DisposableEffect(responseId, bannerContainer) {
+        onDispose {
+            val currentResponseId = responseId
+            val container = bannerContainer
+            if (currentResponseId != null && container != null && activity != null) {
+                TapsellPlus.destroyStandardBanner(activity, currentResponseId, container)
+            }
+        }
+    }
 }
 
 @Composable
@@ -641,14 +631,11 @@ private data class ConversionState(
     val errorMessage: String?
 )
 
+private const val TapsellLogTag = "TapsellPlus"
+private const val TapsellTestStandardZoneId = "5cfaaa30e8d17f0001ffb294"
 private const val MaxInputLength = 18
 private const val KeypadLongPressIntervalMillis = 120L
 private val KeypadReservedSpace = 302.dp
-private val StandardBannerHeight = 50.dp
-
-private const val TAPSELL_TEST_APP_ID =
-    "alsoatsrtrotpqacegkehkaiieckldhrgsbspqtgqnbrrfccrtbdomgjtahflchkqtqosa"
-private const val TAPSELL_TEST_STANDARD_ZONE_ID = "5cfaaa30e8d17f0001ffb294"
 
 private val decimalFormat = DecimalFormat("#,###", DecimalFormatSymbols(Locale.US))
 
@@ -933,7 +920,7 @@ private fun threeDigitsToWords(number: Int): String {
 fun TomanBoxPreview() {
     TomanBoxTheme {
         CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Rtl) {
-            TomanBoxScreen(tapsellReady = remember { mutableStateOf(false) })
+            TomanBoxScreen(tapsellReady = true)
         }
     }
 }
